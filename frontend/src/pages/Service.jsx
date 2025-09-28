@@ -1,14 +1,19 @@
 import React, { useContext, useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams,useNavigate } from 'react-router-dom'
 import { AppContext } from '../context/AppContext';
 import { assets } from '../assets/assets';
 import RelatedWorkers from '../components/RelatedWorkers';
+import {toast} from 'react-toastify'
+import axios from 'axios';
+
 
 const Service = () => {
 
   const { workId } = useParams();
 
-  const { workers, currencySymbol } = useContext(AppContext);
+  const navigate=useNavigate()
+
+   const {workers,currencySymbol,backendUrl,token,getWorkersData}=useContext(AppContext);
   const daysOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
   const [workerInfo, setWorkerInfo] = useState(null);
@@ -22,10 +27,12 @@ const Service = () => {
   }
 
   const getAvailableSlots = () => {
+    if(!workerInfo) return;
     setWorkerSlots([])
+    let finalSlots = [];
     //getting current date
     let today = new Date()
-
+    
     for (let i = 0; i < 7; i++) {
       //geting date with index
       let currentDate = new Date(today);
@@ -50,21 +57,67 @@ const Service = () => {
       while (currentDate < endTime) {
         let formattedTime = currentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        //add slot to array
+        let day = currentDate.getDate();
+      let month = currentDate.getMonth() + 1; 
+      let year = currentDate.getFullYear();
+
+      const slotDate = `${day}_${month}_${year}`; // ✅ ab backend ke format se match karega
+      const slotTime = formattedTime;
+
+      // ✅ safe check with optional chaining
+      const isSlotAvailable = workerInfo.slots_booked?.[slotDate]?.includes(slotTime) ? false : true;
+
+      if (isSlotAvailable) {
         timeSlots.push({
           datetime: new Date(currentDate),
           time: formattedTime
-        })
+        });
+      }
 
         //increament current time with 30 minutes
         currentDate.setMinutes(currentDate.getMinutes() + 30);
       }
-
-       setWorkerSlots(prev => [...prev, timeSlots])
+        //allSlots.push(timeSlots);
+     //  setWorkerSlots(prev => [...prev, timeSlots])
+      finalSlots.push(timeSlots);
 
     }
-   
+     setWorkerSlots(finalSlots); 
   }
+
+
+   const bookService=async()=>{
+    if(!token){
+      toast.warn('please login to book service')
+      navigate('/login')
+    }
+
+    try {
+
+      const date=workerSlots[slotIndex][0].datetime
+
+      let day=date.getDate()
+      let month=date.getMonth()+1
+      let year=date.getFullYear()
+
+      const slotDate=day+"_"+month+"_"+year
+
+      const {data}= await axios.post(backendUrl + '/api/user/book-service',{workId,slotDate,slotTime},{headers:{token}})
+
+        if(data.success){
+           toast.success(data.message)
+           getWorkersData()
+           navigate('/my-service')
+        }else{
+          toast.error(data.message)
+        }
+      
+    } catch (error) {
+      console.log(error)
+      toast.error(error.message)
+    }
+  }
+
 
   useEffect(() => {
     fetchWorkerInfo()
@@ -135,7 +188,7 @@ const Service = () => {
             ))
           }
         </div>
-        <button className='bg-blue-500 text-white font-light px-14 py-3 rounded-full my-6'>Book an service</button>
+        <button onClick={bookService} className='bg-blue-500 text-white font-light px-14 py-3 rounded-full my-6'>Book an service</button>
       </div>
       {/* --------listing related workers-------- */}
       <RelatedWorkers workId={workId} speciality={workerInfo.speciality} />
