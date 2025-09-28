@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken'
 import {v2 as cloudinary} from 'cloudinary'
 import workerModel from '../models/workerModel.js';
 import serviceModel from '../models/serviceModel.js';
+import razorpay from 'razorpay'
 
 //API to register user
 const registerUser = async (req, res) => {
@@ -212,7 +213,7 @@ const cancelService=async(req,res)=>{
         const serviceData=await serviceModel.findById(serviceId)
 
         //Verify appointment user
-        if(serviceData.userId !== userId){
+        if(serviceData.userId.toString() !== userId){
             return res.json({success:false,message:"Unauthorized Action"})
         }
 
@@ -237,4 +238,61 @@ const cancelService=async(req,res)=>{
     }
 }
 
-export {registerUser,loginUser,getProfile,updateProfile,bookService,listService,cancelService}
+const razorpayInstance=new razorpay({
+    key_id:process.env.RAZORPAY_KEY_ID,
+    key_secret:process.env.RAZORPAY_SECRET_ID
+})
+
+//API to make payment of service using razorpay
+
+const paymentRazorpay=async(req,res)=>{
+    try {
+
+         const {serviceId}=req.body
+    const serviceData=await serviceModel.findById(serviceId)
+
+    if(!serviceData || serviceData.cancelled){
+        return res.json({success:false,message:"Service Cancelled Or Not Found"})
+    }
+    //creating option for razorpay payment
+    const options={
+        amount:serviceData.amount*100,
+        currency:process.env.CURRENCY,
+        receipt:serviceId
+    }
+
+    //creation of an order
+    const order=await razorpayInstance.orders.create(options)
+
+    res.json({success:true,order})
+        
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+        
+    }
+   
+
+}
+//API to verify a payment of razorpay
+    const verifyRazorpay=async(req,res)=>{
+        try {
+
+            const {razorpay_order_id}=req.body
+            const orderInfo=await razorpayInstance.orders.fetch(razorpay_order_id)
+
+            if(orderInfo.status ==='paid'){
+                await serviceModel.findByIdAndUpdate(orderInfo.receipt,{payment:true})
+                res.json({success:true,message:"Payment Successfull"})
+            }else{
+                 res.json({success:true,message:"Payment Failed"})
+            }
+            
+        } catch (error) {
+           console.log(error)
+           res.json({ success: false, message: error.message })
+        }
+    }
+
+
+export {registerUser,loginUser,getProfile,updateProfile,bookService,listService,cancelService,paymentRazorpay,verifyRazorpay}

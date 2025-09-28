@@ -22,7 +22,6 @@ const workerList=async(req,res)=>{
      try {
 
         const workers=await workerModel.find({}).select(['-password','-email'])
-        console.log(workers);
         res.json({success:true,workers})
         
      } catch (error) {
