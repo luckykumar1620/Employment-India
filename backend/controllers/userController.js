@@ -202,4 +202,39 @@ const listService = async (req, res) => {
 
 }
 
-export {registerUser,loginUser,getProfile,updateProfile,bookService,listService}
+//API to cancel service
+const cancelService=async(req,res)=>{
+    try {
+
+        const userId=req.userId
+        const {serviceId}=req.body
+
+        const serviceData=await serviceModel.findById(serviceId)
+
+        //Verify appointment user
+        if(serviceData.userId !== userId){
+            return res.json({success:false,message:"Unauthorized Action"})
+        }
+
+        await serviceModel.findByIdAndUpdate(serviceId,{cancelled:true})
+
+        //releasing doctor slot
+        const {workId,slotDate,slotTime}=serviceData
+
+        const workerData=await workerModel.findById(workId)
+
+        let slots_booked=workerData.slots_booked
+
+        slots_booked[slotDate]=slots_booked[slotDate].filter(e=>e !==slotTime)
+
+        await workerModel.findByIdAndUpdate(workId,{slots_booked})
+
+        res.json({success:true,message:'Service Cancelled'})
+        
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+    }
+}
+
+export {registerUser,loginUser,getProfile,updateProfile,bookService,listService,cancelService}
