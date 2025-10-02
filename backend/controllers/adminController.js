@@ -3,6 +3,8 @@ import validator from "validator"
 import {v2 as cloudinary} from "cloudinary"
 import workerModel from "../models/workerModel.js"
 import jwt from 'jsonwebtoken'
+import serviceModel from "../models/serviceModel.js"
+import userModel from "../models/userModel.js"
 
 
 
@@ -100,4 +102,73 @@ const allWorkers= async(req,res)=>{
     
 }
 
-export {addWorker,loginAdmin,allWorkers}
+//API to get all Services list
+const servicesAdmin=async(req,res)=>{
+    try {
+
+        const services=await serviceModel.find({})
+       
+        res.json({success:true,services})
+        
+    } catch (error) {
+        console.log(error)
+        res.json({success:false,message:error.message})
+    }
+}
+
+//API for  Service Cancel
+const serviceCancel=async(req,res)=>{
+    try {
+
+      
+        const {serviceId}=req.body
+
+        const serviceData=await serviceModel.findById(serviceId)
+
+        await serviceModel.findByIdAndUpdate(serviceId,{cancelled:true})
+
+        //releasing worker slot
+        const {workId,slotDate,slotTime}=serviceData
+
+        const workerData=await workerModel.findById(workId)
+
+        let slots_booked=workerData.slots_booked
+
+        slots_booked[slotDate]=slots_booked[slotDate].filter(e=>e !==slotTime)
+
+        await workerModel.findByIdAndUpdate(workId,{slots_booked})
+
+        res.json({success:true,message:'Service Cancelled'})
+        
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+    }
+}
+
+//API to get dashboard data for admin panel
+
+const adminDashboard=async(req,res)=>{
+    try {
+
+        const workers=await workerModel.find({})
+        const users=await userModel.find({})
+        const services=await serviceModel.find({})
+
+        const dashData={
+            workers:workers.length,
+            services:services.length,
+            users:users.length,
+            latestServices:services.reverse().slice(0,5)
+        }
+
+        res.json({success:true,dashData})
+        
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+        
+    }
+}    
+
+export {addWorker,loginAdmin,allWorkers,servicesAdmin,serviceCancel,adminDashboard}

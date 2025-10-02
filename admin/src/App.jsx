@@ -10,12 +10,17 @@ import AllServices from './pages/Admin/AllServices';
 import Sidebar from './components/Sidebar';
 import AddWorker from './pages/Admin/AddWorker';
 import WorkerList from './pages/Admin/WorkerList';
+import { WorkerContext } from './context/WorkerContext';
+import WorkerDashboard from './pages/Worker/WorkerDashboard';
+import WorkerServices from './pages/Worker/WorkerServices';
+import WorkerProfile from './pages/Worker/WorkerProfile';
 
 const App = () => {
 
   const {aToken}=useContext(AdminContext)
+  const {wToken}=useContext(WorkerContext)
 
-return aToken? (
+return aToken || wToken ? (
     <div className='bg-[#F8F9FD]'>
       <ToastContainer/>
       <Navbar/>
@@ -23,10 +28,16 @@ return aToken? (
         <Sidebar/>
         <Routes>
           <Route path='/' element={<></>} />
+          {/* Admin Route */}
           <Route path='/admin-dashboard' element={<Dashboard/>} />
           <Route path='/all-services' element={<AllServices/>} />
           <Route path='/add-worker' element={<AddWorker/>} />
            <Route path='/worker-list' element={<WorkerList/>} />
+
+           {/* Worker Route */}
+           <Route path='/worker-dashboard' element={<WorkerDashboard/>} />
+           <Route path='/worker-services' element={<WorkerServices/>} />
+           <Route path='/worker-profile' element={<WorkerProfile/>} />
         </Routes>
       </div>
     </div>

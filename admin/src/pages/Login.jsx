@@ -3,6 +3,7 @@ import { assets } from '../assets/assets'
 import { AdminContext } from '../context/AdminContext'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import { WorkerContext } from '../context/WorkerContext'
 
 
 const Login = () => {
@@ -13,6 +14,7 @@ const Login = () => {
 
 
    const {setAToken,backendUrl}=useContext(AdminContext);
+   const {setWToken}=useContext(WorkerContext)
 
     const onSubmitHandler=async(event)=>{
 
@@ -24,14 +26,24 @@ const Login = () => {
             
            const {data}=await axios.post(backendUrl + '/api/admin/login',{email,password})
            if(data.success){
-            localStorage.setItem('aToken',data.token)
+            localStorage.setItem('wToken',data.token)
              setAToken(data.token)
-
+             
            }else{
              toast.error(data.message)
            }
 
           }else{
+
+              const {data}=await axios.post(backendUrl+'/api/worker/login',{email,password})
+             if(data.success){
+            localStorage.setItem('wToken',data.token)
+             setWToken(data.token)
+             console.log(data.token)
+
+           }else{
+             toast.error(data.message)
+           }
 
           }
 
